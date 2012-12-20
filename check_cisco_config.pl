@@ -160,7 +160,7 @@ sub tftp_config {
   #commit changes back to original file
   untie @text;
   #change permissions on file
-  chmod 0770, "$config_path/$device_name/$device_name-confg-temp";
+  chmod 0775, "$config_path/$device_name/$device_name-confg-temp";
 }
 
 sub analyze_config {
