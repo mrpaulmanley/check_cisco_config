@@ -7,7 +7,7 @@ use File::Copy;
 
 #Script name and version. Used when printing the usage page
 $script = "check_cisco_config.pl";
-$script_version = "0.1";
+$script_version = "0.2";
 
 check_arguments ();
 check_backup_directory ();
