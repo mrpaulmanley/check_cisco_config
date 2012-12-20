@@ -2,6 +2,7 @@ check_cisco_config
 ==================
 http://exchange.nagios.org/directory/Plugins/Network-and-Systems-Management/Check_Cisco_Config/details
 
+<pre>
 This is a Nagios plugin that will utilize SNMPset and TFTP to backup and alert on changes for Cisco IOS devices.
 
 I successfully use this plugin with the following switches and APs (it probably works with many more, but this is only what I have in production.)
@@ -54,11 +55,11 @@ Sample Service Template
     register                            0
   }
 
-Note regarding email notifications
-  The default notify-service-by-email includes:
-  Output: $SERVICEOUTPUT$\n
-  $SERVICEOUTPUT$ only includes the first line of service output.
-  This should be replaced with:
+Note regarding email notifications 
+  The default notify-service-by-email includes: 
+  Output: $SERVICEOUTPUT$\n 
+  $SERVICEOUTPUT$ only includes the first line of service output. 
+  This should be replaced with: 
   Output: $SERVICEOUTPUT$\n$LONGSERVICEOUTPUT$\n
   
 Note regarding Outlook (all versions)
@@ -98,3 +99,4 @@ Sample creating and securing directories
   $sudo chgrp -R nagios /usr/local/nagios/cisco_configs
   $sudo chown nagios /usr/local/nagios/tftp
   $sudo chgrp nagios /usr/local/nagios/tftp
+</pre>
