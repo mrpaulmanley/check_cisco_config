@@ -4,10 +4,11 @@ use Getopt::Std;
 use Switch;
 use Tie::File;
 use File::Copy;
+use File::Touch;
 
 #Script name and version. Used when printing the usage page
 $script = "check_cisco_config.pl";
-$script_version = "0.2";
+$script_version = "0.3";
 
 check_arguments ();
 check_backup_directory ();
@@ -79,7 +80,7 @@ sub check_arguments {
     $timeout = $opt_t;
   }
   else {
-    $timeout = 30;
+    $timeout = 60;
   }
 }
 
@@ -131,6 +132,10 @@ sub tftp_config {
   if (-e $tftp_path . '/' . $device_name . "-confg-temp") {
     unlink($tftp_path . '/' . $device_name . "-confg-temp");
   }
+  #touch the file we are going to transfer so tftpd will allow us to accept the
+  #incoming file. We also need to set the perms to 0777
+  touch($tftp_path . '/' . $device_name . "-confg-temp");
+  chmod 0777, "$tftp_path/$device_name-confg-temp";
   #set a random number to use with SNMPset. this is what identifies the current
   #snmpset session. 
   $randomint = int(rand(999));
