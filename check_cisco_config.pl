@@ -8,7 +8,8 @@ use File::Touch;
 
 #Script name and version. Used when printing the usage page
 $script = "check_cisco_config.pl";
-$script_version = "0.4";
+$script_version = "0.5";
+$snmparg = '';
 
 check_arguments ();
 check_backup_directory ();
@@ -19,7 +20,7 @@ analyze_config ();
 exit $status;
 
 sub check_arguments {
-  getopts("H:C:I:T:L:l:S:N:t");
+  getopts("H:v:x:X:a:A:u:C:I:T:L:l:S:N:t");
   if ($opt_H){
     $hostip = $opt_H;
   }
@@ -27,12 +28,103 @@ sub check_arguments {
     print "Host IP address not specified\n";
     print_usage();
   }
+  if ( ! $opt_v) {
+    print "SNMP version not specified.\n";
+    print_usage();
+  }
+  elsif ($opt_v =~ /^([13]|2c)$/){
+    $version = $opt_v;
+    $snmparg .= " -v " . $version;
+  }
+  else {
+    print "Version must be 1, 2c or 3.\n";
+    print_usage();
+  }
+if ($version == 3){
+  $snmplevel = "noAuthNoPriv";
+  if ($opt_u){
+    $snmpuser = $opt_u;
+    $snmparg .= " -u " . $snmpuser;
+  }
+  else {
+    print "SNMP user not specified.\n";
+    print_usage();
+  }
+if ( ! (($opt_x) xor ($opt_X))) {
+if ($opt_x && $opt_X) {
+  if ($opt_x =~ /^([AD]ES|[ad]es)$/){
+    $snmpprivproto = $opt_x;
+    $snmparg .= " -x " . $snmpprivproto;
+  }
+  else {
+    print "Unknown SNMP privacy protocol.\n";
+    print_usage();
+  }
+  if ($opt_X) {
+    $snmpprivpass = $opt_X;
+    $snmparg .= " -X " . $snmpprivpass;
+    $priv = 1;
+  }
+  else {
+    print "SNMP privacy password not specified.\n";
+    print_usage();
+  }
+}
+else {$priv = 0;}
+}
+else {
+  print "Missing some of privacy parameters.\n";
+  print_usage();
+}
+if (!(($opt_a) xor ($opt_A))) {
+if ($opt_a && $opt_A) {
+  if ($opt_a =~ /^(sha|SHA|md5|MD5)$/) {
+    $snmpauthproto = $opt_a;
+    $snmparg .= " -a " . $snmpauthproto;
+  }
+  else {
+    print "Unknown SNMP authentication protocol.\n";
+    print_usage();
+  }
+  if ($opt_A) {
+    $snmpauthpass = $opt_A;
+    $snmparg .= " -A " . $snmpauthpass;
+    $auth = 1;
+  }
+  else {
+    print "SNMP authentication password not specified.\n";
+    print_usage();
+  }
+}
+else {$auth = 0;}
+}
+else {
+  print "Missing some of authentication parameters.\n";
+  print_usage();
+}
+ if ($auth = 1) {
+  if ($priv = 1) {
+   $snmplevel = "authPriv";
+  }
+  else {
+   $snmplevel = "authNoPriv";
+  }
+ }
+ else {
+  $snmplevel = "noAuthNoPriv";
+ }
+ $snmparg .= " -l " . $snmplevel;
+}
+elsif ($version =~ /^(1|2c)$/){
   if ($opt_C){
     $community = $opt_C;
   }
   else {
     $community = "public";
   }
+  $snmparg .= " -c " . $community;
+
+}
   if ($opt_I){
     $tftp_IP = $opt_I;
   }
@@ -132,7 +224,7 @@ sub check_tftp_directory {
 
 sub get_sysoid_and_vendor {
   #check sysOID
-  $sysoid = `snmpget -O qvn -c $community -v 2c $hostip 1.3.6.1.2.1.1.2.0`;
+  $sysoid = `snmpget -O qvn $snmparg $hostip 1.3.6.1.2.1.1.2.0`;
   #extract vendor enterprise ID
   $vendor = $sysoid;
   $vendor =~ s/^\.1\.3\.6\.1\.4\.1\.([0-9]*)[\s\S]*/\1/;
@@ -143,7 +235,7 @@ sub make_backup {
         #Cisco
         case "9" {
                 print "Backup Cisco config...\n";
-                `snmpset -c $community -v 2c $hostip 1.3.6.1.4.1.9.9.96.1.1.1.1.2.$randomint i 1 .1.3.6.1.4.1.9.9.96.1.1.1.1.3.$randomint i 4 .1.3.6.1.4.1.9.9.96.1.1.1.1.4.$randomint i 1 .1.3.6.1.4.1.9.9.96.1.1.1.1.5.$randomint a \"$tftp_IP\" .1.3.6.1.4.1.9.9.96.1.1.1.1.6.$randomint s \"$device_name-$config_type-confg-temp.cfg\" .1.3.6.1.4.1.9.9.96.1.1.1.1.14.$randomint i 4`;
+                `snmpset $snmparg $hostip 1.3.6.1.4.1.9.9.96.1.1.1.1.2.$randomint i 1 .1.3.6.1.4.1.9.9.96.1.1.1.1.3.$randomint i 4 .1.3.6.1.4.1.9.9.96.1.1.1.1.4.$randomint i 1 .1.3.6.1.4.1.9.9.96.1.1.1.1.5.$randomint a \"$tftp_IP\" .1.3.6.1.4.1.9.9.96.1.1.1.1.6.$randomint s \"$device_name-$config_type-confg-temp.cfg\" .1.3.6.1.4.1.9.9.96.1.1.1.1.14.$randomint i 4`;
         }
         #H3C
         case "25506" {
@@ -153,7 +245,7 @@ sub make_backup {
                         case "startup" {$cfg_type = 6;}
                         else {print "Fail!"; exit 2;}
                 }
-                `snmpset -v 2c -c $community $hostip 1.3.6.1.4.1.25506.2.4.1.2.4.1.2.$randomint i $cfg_type 1.3.6.1.4.1.25506.2.4.1.2.4.1.3.$randomint i 2 1.3.6.1.4.1.25506.2.4.1.2.4.1.4.$randomint s $device_name-$config_type-confg-temp\.cfg 1.3.6.1.4.1.25506.2.4.1.2.4.1.5.$randomint a $tftp_IP 1.3.6.1.4.1.25506.2.4.1.2.4.1.9.$randomint i 4`
+                `snmpset $snmparg $hostip 1.3.6.1.4.1.25506.2.4.1.2.4.1.2.$randomint i $cfg_type 1.3.6.1.4.1.25506.2.4.1.2.4.1.3.$randomint i 2 1.3.6.1.4.1.25506.2.4.1.2.4.1.4.$randomint s $device_name-$config_type-confg-temp\.cfg 1.3.6.1.4.1.25506.2.4.1.2.4.1.5.$randomint a $tftp_IP 1.3.6.1.4.1.25506.2.4.1.2.4.1.9.$randomint i 4`
         }
         else { print "Device enterprise ID \"".$vendor."\" = unknown => no backup\n"; exit 2; }
   }
@@ -256,13 +348,13 @@ $script v$script_version
 Uses SNMP to initiate backup of Cisco configuration to TFTP. After backup the
 config can be compared to the last backup and alert with any changes.
 
-Usage: check_cisco_config.pl -H <hostip> -C <community> -I <TFTP IP>
+Usage: check_cisco_config.pl -H <hostip> -v <SNMPversion> -C <SNMPcommunity> -a [SHA|MD5] -A <SNMPauthPassword> -x [AES|DES] -X <SNMPprivacyPassword> -u <SNMPuser> -I <TFTP IP>
 -T <ConfigType> -L <config path> -l <tftp path> -N <device name>
 
 Options: -H     IP address
          -C     Community (default is public)
          -I     IP address of the tftp server
-         -T     Configuration type to backup [running] [startup] [current]
+         -T     Configuration type to backup [running] [startup]
          -L     Local absolute path to root of the configuration backup
                 directory
          -l     Local absolute path to the TFTP root
