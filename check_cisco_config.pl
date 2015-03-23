@@ -32,12 +32,12 @@ sub check_arguments {
     print "SNMP version not specified.\n";
     print_usage();
   }
-  elsif ($opt_v =~ /^([13]|2c)$/){
+  elsif ($opt_v =~ /^([1-3])$/){
     $version = $opt_v;
     $snmparg .= " -v " . $version;
   }
   else {
-    print "Version must be 1, 2c or 3.\n";
+    print "Version must be 1, 2 or 3.\n";
     print_usage();
   }
 if ($version == 3){
@@ -115,7 +115,7 @@ else {
  }
  $snmparg .= " -l " . $snmplevel;
 }
-elsif ($version =~ /^(1|2c)$/){
+elsif ($version =~ /^(1|2)$/){
   if ($opt_C){
     $community = $opt_C;
   }
